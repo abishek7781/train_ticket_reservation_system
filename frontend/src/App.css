@@ -1,7 +1,10 @@
 /* Global Styles */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6f8;
+  background-image: url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
   margin: 0;
   padding: 0;
   color: #2c3e50;
@@ -20,7 +23,7 @@ h2, h3 {
 .booking-container {
   max-width: 960px;
   margin: 50px auto;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.85);
   padding: 40px 50px;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);

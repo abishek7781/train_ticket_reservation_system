@@ -1,20 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';  // Import useNavigate for navigation
+import { useNavigate } from 'react-router-dom';
 
 const Booking = () => {
+  const [username, setUsername] = useState('');
   const [cities, setCities] = useState([]);
   const [trains, setTrains] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [seats, setSeats] = useState([]);
+  const [suggestedSeats, setSuggestedSeats] = useState([]);
   const [selectedTrain, setSelectedTrain] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [sourceCity, setSourceCity] = useState('');
   const [destinationCity, setDestinationCity] = useState('');
+  const [bookingDate, setBookingDate] = useState('');
   const [bookings, setBookings] = useState([]);
 
-  const navigate = useNavigate();  // Hook to navigate
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
 
   useEffect(() => {
     axios.get('/api/cities').then(res => {
@@ -28,7 +38,6 @@ const Booking = () => {
     if (sourceCity) {
       axios.get(`/api/trains/${sourceCity}`).then(res => {
         if (res.data.success) {
-          // Remove duplicate trains by id
           const uniqueTrains = Array.from(new Map(res.data.trains.map(item => [item.id, item])).values());
           setTrains(uniqueTrains);
         }
@@ -47,7 +56,6 @@ const Booking = () => {
     if (selectedTrain) {
       axios.get(`/api/time_slots/${selectedTrain}`).then(res => {
         if (res.data.success) {
-          // Remove duplicate time slots by id
           const uniqueTimeSlots = Array.from(new Map(res.data.time_slots.map(item => [item.id, item])).values());
           setTimeSlots(uniqueTimeSlots);
         }
@@ -61,17 +69,23 @@ const Booking = () => {
   }, [selectedTrain]);
 
   useEffect(() => {
-    if (selectedTrain && selectedTimeSlot) {
-      axios.get(`/api/seats/${selectedTrain}/${selectedTimeSlot}`).then(res => {
+    if (selectedTrain && selectedTimeSlot && bookingDate) {
+      axios.get(`/api/seats/${selectedTrain}/${selectedTimeSlot}`, { params: { date: bookingDate } }).then(res => {
         if (res.data.success) {
           setSeats(res.data.seats);
         }
       });
+      axios.get(`/api/ai_suggest_seats/${selectedTrain}/${selectedTimeSlot}`, { params: { date: bookingDate } }).then(res => {
+        if (res.data.success) {
+          setSuggestedSeats(res.data.suggested_seats);
+        }
+      });
     } else {
       setSeats([]);
+      setSuggestedSeats([]);
     }
     setSelectedSeats([]);
-  }, [selectedTrain, selectedTimeSlot]);
+  }, [selectedTrain, selectedTimeSlot, bookingDate]);
 
   const toggleSeatSelection = (seatId) => {
     if (selectedSeats.includes(seatId)) {
@@ -82,47 +96,39 @@ const Booking = () => {
   };
 
   const handleBooking = () => {
-    if (!sourceCity || !destinationCity) {
-      alert('Please select source and destination cities');
-      return;
-    }
-    if (!selectedTrain || !selectedTimeSlot || selectedSeats.length === 0) {
-      alert('Please select train, time slot, and seats');
+    if (!sourceCity || !destinationCity || !selectedTrain || !selectedTimeSlot || selectedSeats.length === 0) {
+      alert('Please complete all fields to book.');
       return;
     }
     const userId = localStorage.getItem('userId');
     const username = localStorage.getItem('username');
-
     if (!userId || !username) {
-      alert('User not logged in. Please login to book seats.');
+      alert('User not logged in. Please login.');
       return;
     }
 
     selectedSeats.forEach(seatId => {
       axios.post('/api/book', {
         user_id: userId,
-        username: username,
+        username,
         train_id: selectedTrain,
         time_slot_id: selectedTimeSlot,
         seat_id: seatId,
         source_city: sourceCity,
-        destination_city: destinationCity
+        destination_city: destinationCity,
+        booking_date: bookingDate
       }).then(res => {
-        console.log('Booking response:', res);
         if (res.data.success) {
-          alert('Booking successful');
-          axios.get(`/api/seats/${selectedTrain}/${selectedTimeSlot}`).then(res => {
-            if (res.data.success) {
-              setSeats(res.data.seats);
-            }
-          });
           fetchUserBookings();
+          axios.get(`/api/seats/${selectedTrain}/${selectedTimeSlot}`, { params: { date: bookingDate } }).then(res => {
+            if (res.data.success) setSeats(res.data.seats);
+          });
+          alert('Booking successful');
         } else {
           alert(res.data.message || 'Booking failed');
         }
-      }).catch(error => {
-        console.error('Booking error:', error);
-        alert('Booking failed due to network error');
+      }).catch(() => {
+        alert('Network error. Booking failed.');
       });
     });
   };
@@ -145,105 +151,70 @@ const Booking = () => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    navigate('/');  // Redirect to the main page
+    localStorage.clear();
+    navigate('/');
   };
 
   return (
     <div style={styles.pageContainer}>
-      <div style={styles.bookingContainer}>
-        <button 
-          onClick={handleLogout} 
-          style={styles.logoutButton}>
-          Logout
-        </button>
-        <h2 style={styles.heading}>Book Your Train Ticket</h2>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Source City:</label>
-          <select value={sourceCity} onChange={e => setSourceCity(e.target.value)} style={styles.select}>
-            <option value="">Select Source City</option>
-            {cities.map(city => (
-              <option key={city.id} value={city.id}>{city.name}</option>
-            ))}
-          </select>
-        </div>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Destination City:</label>
-          <select value={destinationCity} onChange={e => setDestinationCity(e.target.value)} style={styles.select}>
-            <option value="">Select Destination City</option>
-            {cities.map(city => (
-              <option key={city.id} value={city.id}>{city.name}</option>
-            ))}
-          </select>
-        </div>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Train:</label>
-          <select value={selectedTrain} onChange={e => setSelectedTrain(e.target.value)} style={styles.select}>
-            <option value="">Select Train</option>
-            {trains.map(train => (
-              <option key={train.id} value={train.id}>{train.name}</option>
-            ))}
-          </select>
-        </div>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Time Slot:</label>
-          <select value={selectedTimeSlot} onChange={e => setSelectedTimeSlot(e.target.value)} style={styles.select}>
-            <option value="">Select Time Slot</option>
-            {timeSlots.map(slot => (
-              <option key={slot.id} value={slot.id}>{slot.slot_time}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <h3 style={styles.subHeading}>Seats</h3>
-          <div style={styles.seatsContainer}>
-            {seats.map(seat => (
-              <div
-                key={seat.id}
-                onClick={() => seat.is_available && toggleSeatSelection(seat.id)}
-                style={{
-                  ...styles.seat,
-                  backgroundColor: selectedSeats.includes(seat.id)
-                    ? 'green'
-                    : seat.is_available
-                    ? 'lightgray'
-                    : 'red',
-                  color: seat.is_available ? 'black' : 'white',
-                  cursor: seat.is_available ? 'pointer' : 'not-allowed',
-                  opacity: seat.is_available ? 1 : 0.5,
-                }}
-              >
-                {seat.seat_number}
-              </div>
-            ))}
-          </div>
-        </div>
-        <button onClick={handleBooking} style={styles.button}>Book Selected Seats</button>
+      <div style={styles.card}>
+        <header style={styles.header}>
+          <h2 style={styles.greeting}>👋 Hello, <span style={styles.username}>{username}</span></h2>
+          <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+        </header>
 
-        <h3 style={styles.subHeading}>Your Bookings</h3>
-        <div style={{ overflowX: 'auto' }}>
+        <h1 style={styles.title}>🚂 Train Ticket Booking</h1>
+
+        <section style={styles.form}>
+          <Input label="Booking Date" type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} minDate today maxDays={9} />
+          <Select label="Source City" value={sourceCity} onChange={e => setSourceCity(e.target.value)} options={cities} />
+          <Select label="Destination City" value={destinationCity} onChange={e => setDestinationCity(e.target.value)} options={cities} />
+          <Select label="Train" value={selectedTrain} onChange={e => setSelectedTrain(e.target.value)} options={trains} nameKey="name" />
+          <Select label="Time Slot" value={selectedTimeSlot} onChange={e => setSelectedTimeSlot(e.target.value)} options={timeSlots} nameKey="slot_time" />
+        </section>
+
+        <h3 style={styles.sectionTitle}>🎟️ Select Your Seats</h3>
+        <div style={styles.seatsGrid}>
+          {seats.map(seat => (
+            <div
+              key={seat.id}
+              onClick={() => seat.is_available && toggleSeatSelection(seat.id)}
+              style={{
+                ...styles.seat,
+                backgroundColor: selectedSeats.includes(seat.id)
+                  ? '#2ecc71'
+                  : suggestedSeats.includes(seat.id)
+                  ? '#3498db'
+                  : seat.is_available
+                  ? '#bdc3c7'
+                  : '#e74c3c',
+                cursor: seat.is_available ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {seat.seat_number}
+            </div>
+          ))}
+        </div>
+
+        <button onClick={handleBooking} style={styles.bookBtn}>Confirm Booking</button>
+
+        <h3 style={styles.sectionTitle}>📋 Your Bookings</h3>
+        <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Booking ID</th>
-                <th style={styles.th}>Train</th>
-                <th style={styles.th}>Time Slot</th>
-                <th style={styles.th}>Seat</th>
-                <th style={styles.th}>Source City</th>
-                <th style={styles.th}>Destination City</th>
+                {['Booking ID', 'Train', 'Time Slot', 'Date', 'Seat', 'From', 'To'].map((head, idx) => (
+                  <th key={idx} style={styles.th}>{head}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {bookings.map(booking => (
-                <tr
-                  key={booking.id}
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f1f1'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}>
+              {bookings.map((booking, idx) => (
+                <tr key={booking.id} style={{ backgroundColor: idx % 2 === 0 ? '#f9f9f9' : 'white' }}>
                   <td style={styles.td}>{booking.id}</td>
                   <td style={styles.td}>{booking.train_name}</td>
                   <td style={styles.td}>{booking.time_slot}</td>
+                  <td style={styles.td}>{new Date(booking.booking_date).toLocaleDateString('en-GB')}</td>
                   <td style={styles.td}>{booking.seat_name}</td>
                   <td style={styles.td}>{booking.source_city_name}</td>
                   <td style={styles.td}>{booking.destination_city_name}</td>
@@ -257,102 +228,149 @@ const Booking = () => {
   );
 };
 
-// Internal CSS styles
+const Input = ({ label, value, onChange, type = 'text', minDate, today, maxDays }) => {
+  const min = today ? new Date().toISOString().split('T')[0] : undefined;
+  const max = today && maxDays ? new Date(Date.now() + maxDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined;
+  return (
+    <div style={styles.formGroup}>
+      <label style={styles.label}>{label}</label>
+      <input type={type} value={value} onChange={onChange} min={minDate || min} max={max} style={styles.input} />
+    </div>
+  );
+};
+
+const Select = ({ label, value, onChange, options, nameKey = 'name' }) => (
+  <div style={styles.formGroup}>
+    <label style={styles.label}>{label}</label>
+    <select value={value} onChange={onChange} style={styles.input}>
+      <option value="">Select {label}</option>
+      {options.map(opt => (
+        <option key={opt.id} value={opt.id}>{opt[nameKey]}</option>
+      ))}
+    </select>
+  </div>
+);
+
 const styles = {
   pageContainer: {
     minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: 'linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%)',
+    backgroundImage: "url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg')",
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center center',
     padding: '20px',
   },
-  bookingContainer: {
-    backgroundColor: '#fff',
+  card: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
     padding: '30px',
-    borderRadius: '10px',
-    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
     width: '100%',
-    maxWidth: '800px',
-    position: 'relative',
+    maxWidth: '1000px',
   },
-  heading: {
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '25px',
+  },
+  greeting: {
+    fontSize: '22px',
+    fontWeight: 'bold',
+  },
+  username: {
+    color: '#6a11cb',
+  },
+  logoutBtn: {
+    backgroundColor: '#ff4d4d',
+    border: 'none',
+    padding: '10px 16px',
+    borderRadius: '8px',
+    color: 'white',
+    fontWeight: '600',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  title: {
     textAlign: 'center',
+    fontSize: '28px',
     marginBottom: '20px',
     color: '#333',
   },
-  logoutButton: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    padding: '10px 15px',
-    backgroundColor: '#e74c3c',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontSize: '14px',
-  },
-  subHeading: {
-    marginTop: '30px',
-    marginBottom: '10px',
-    color: '#333',
+  form: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '20px',
   },
   formGroup: {
-    marginBottom: '15px',
+    display: 'flex',
+    flexDirection: 'column',
   },
   label: {
-    display: 'block',
     marginBottom: '5px',
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#555',
   },
-  select: {
-    width: '100%',
-    padding: '8px',
-    borderRadius: '5px',
+  input: {
+    padding: '10px',
+    borderRadius: '8px',
     border: '1px solid #ccc',
   },
-  seatsContainer: {
+  sectionTitle: {
+    marginTop: '30px',
+    marginBottom: '15px',
+    fontSize: '22px',
+    color: '#444',
+  },
+  seatsGrid: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '10px',
-    marginTop: '10px',
   },
   seat: {
-    width: '50px',
-    height: '50px',
+    width: '48px',
+    height: '48px',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: '5px',
-    fontSize: '14px',
-    cursor: 'pointer',
+    borderRadius: '50%',
+    fontWeight: 'bold',
+    transition: '0.3s',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
   },
-  button: {
+  bookBtn: {
     width: '100%',
-    padding: '12px',
-    backgroundColor: '#4caf50',
-    color: '#fff',
+    padding: '15px',
+    marginTop: '20px',
+    backgroundColor: '#6a11cb',
+    color: 'white',
+    fontWeight: 'bold',
+    borderRadius: '10px',
     border: 'none',
-    borderRadius: '5px',
     fontSize: '16px',
     cursor: 'pointer',
+  },
+  tableContainer: {
+    marginTop: '20px',
+    overflowX: 'auto',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    marginTop: '20px',
   },
   th: {
-    padding: '10px',
+    padding: '12px',
+    backgroundColor: '#f5f5f5',
+    fontWeight: 'bold',
+    color: '#555',
     textAlign: 'left',
-    backgroundColor: '#f4f4f4',
-    border: '1px solid #ddd',
   },
   td: {
-    padding: '10px',
-    border: '1px solid #ddd',
+    padding: '12px',
+    borderBottom: '1px solid #ddd',
   },
 };
 

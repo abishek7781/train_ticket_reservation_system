@@ -31,7 +31,7 @@ const Login = () => {
   return (
     <div style={styles.pageContainer}>
       <div style={styles.loginContainer}>
-        <h1 style={styles.heading}>Smart Train Ticket Reservation System</h1> {/* Added Heading */}
+        <h1 style={styles.heading}>Smart Train Ticket Reservation System</h1>
         <h2 style={styles.subHeading}>Login</h2>
         <form onSubmit={handleLogin} style={styles.form}>
           <input
@@ -61,55 +61,59 @@ const Login = () => {
   );
 };
 
-// Internal CSS styles
 const styles = {
   pageContainer: {
     minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: 'linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%)',
+    backgroundImage: "url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg')",
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center center',
     padding: '20px',
   },
   loginContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     padding: '40px',
-    borderRadius: '10px',
-    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+    borderRadius: '12px',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
     width: '100%',
     maxWidth: '400px',
   },
   heading: {
-    fontFamily: 'Roboto, sans-serif', // Added professional font
-    fontWeight: 'bold',               // Bold text
-    fontSize: '24px',
+    fontFamily: 'Roboto, sans-serif',
+    fontWeight: 'bold',
+    fontSize: '26px',
     textAlign: 'center',
-    marginBottom: '20px',
+    marginBottom: '25px',
     color: '#333',
   },
   subHeading: {
     textAlign: 'center',
-    marginBottom: '20px',
-    color: '#333',
+    marginBottom: '25px',
+    color: '#555',
+    fontSize: '20px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
   },
   input: {
-    padding: '10px',
+    padding: '12px',
     marginBottom: '15px',
-    borderRadius: '5px',
+    borderRadius: '8px',
     border: '1px solid #ccc',
     fontSize: '14px',
+    fontFamily: 'Roboto, sans-serif',
   },
   button: {
-    padding: '10px',
-    backgroundColor: '#4CAF50',
+    padding: '12px',
+    backgroundColor: '#3498db',
     color: '#fff',
     fontSize: '16px',
     border: 'none',
-    borderRadius: '5px',
+    borderRadius: '8px',
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
   },
@@ -126,7 +130,7 @@ const styles = {
     color: '#666',
   },
   link: {
-    color: '#4CAF50',
+    color: '#3498db',
     textDecoration: 'none',
     fontWeight: 'bold',
   }

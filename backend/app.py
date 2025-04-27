@@ -40,6 +40,8 @@ class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.timedelta):
             return str(obj)
+        if isinstance(obj, (datetime.date, datetime.datetime)):
+            return obj.isoformat()
         return super().default(obj)
 
 app.json_encoder = CustomJSONEncoder
@@ -152,10 +154,17 @@ def get_trains(city_id):
         return jsonify({'success': False, 'message': 'Database connection error'}), 500
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id, name FROM trains WHERE city_id=%s", (city_id,))
+            cursor.execute("SELECT DISTINCT id, name FROM trains WHERE city_id=%s", (city_id,))
             trains = cursor.fetchall()
-            print(f"Trains found: {trains}")
-            return jsonify({'success': True, 'trains': trains})
+            # Remove duplicates by id in Python as well
+            unique_trains = []
+            seen_ids = set()
+            for train in trains:
+                if train['id'] not in seen_ids:
+                    unique_trains.append(train)
+                    seen_ids.add(train['id'])
+            print(f"Unique trains found: {unique_trains}")
+            return jsonify({'success': True, 'trains': unique_trains})
     except Exception as e:
         print(f"Error fetching trains: {e}")
         traceback.print_exc()
@@ -172,12 +181,19 @@ def get_time_slots(train_id):
         return jsonify({'success': False, 'message': 'Database connection error'}), 500
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id, slot_time FROM time_slots WHERE train_id=%s", (train_id,))
+            cursor.execute("SELECT DISTINCT id, slot_time FROM time_slots WHERE train_id=%s", (train_id,))
             time_slots = cursor.fetchall()
-            print(f"Time slots found: {time_slots}")
-            if not time_slots:
+            # Remove duplicates by id in Python as well
+            unique_time_slots = []
+            seen_ids = set()
+            for slot in time_slots:
+                if slot['id'] not in seen_ids:
+                    unique_time_slots.append(slot)
+                    seen_ids.add(slot['id'])
+            print(f"Unique time slots found: {unique_time_slots}")
+            if not unique_time_slots:
                 print(f"No time slots found for train_id: {train_id}")
-            return jsonify({'success': True, 'time_slots': time_slots})
+            return jsonify({'success': True, 'time_slots': unique_time_slots})
     except Exception as e:
         print(f"Error fetching time slots: {e}")
         traceback.print_exc()
@@ -194,16 +210,98 @@ def get_seats(train_id, time_slot_id):
         return jsonify({'success': False, 'message': 'Database connection error'}), 500
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id, seat_number FROM seats WHERE train_id=%s", (train_id,))
+            cursor.execute("SELECT DISTINCT id, seat_number FROM seats WHERE train_id=%s", (train_id,))
             seats = cursor.fetchall()
+            # Remove duplicates by id in Python as well
+            unique_seats = []
+            seen_ids = set()
+            for seat in seats:
+                if seat['id'] not in seen_ids:
+                    unique_seats.append(seat)
+                    seen_ids.add(seat['id'])
             cursor.execute("SELECT seat_id FROM bookings WHERE train_id=%s AND time_slot_id=%s", (train_id, time_slot_id))
             booked_seats = cursor.fetchall()
             booked_seat_ids = {seat['seat_id'] for seat in booked_seats}
-            for seat in seats:
+            for seat in unique_seats:
                 seat['is_available'] = seat['id'] not in booked_seat_ids
-            return jsonify({'success': True, 'seats': seats})
+            return jsonify({'success': True, 'seats': unique_seats})
     except Exception as e:
         print(f"Error fetching seats: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/ai_suggest_seats/<int:train_id>/<int:time_slot_id>', methods=['GET'])
+def ai_suggest_seats(train_id, time_slot_id):
+    print(f"AI suggesting seats for train_id: {train_id}, time_slot_id: {time_slot_id}")
+    conn = get_db_connection()
+    if conn is None:
+        print("Database connection error")
+        return jsonify({'success': False, 'message': 'Database connection error'}), 500
+    try:
+        with conn.cursor() as cursor:
+            # Get all seats for the train
+            cursor.execute("SELECT DISTINCT id, seat_number FROM seats WHERE train_id=%s ORDER BY seat_number", (train_id,))
+            seats = cursor.fetchall()
+            # Get booked seats for the train and time slot
+            cursor.execute("SELECT seat_id FROM bookings WHERE train_id=%s AND time_slot_id=%s", (train_id, time_slot_id))
+            booked_seats = cursor.fetchall()
+            booked_seat_ids = {seat['seat_id'] for seat in booked_seats}
+            # Filter available seats
+            available_seats = [seat for seat in seats if seat['id'] not in booked_seat_ids]
+            # Enhanced AI heuristic:
+            # 1. Prefer contiguous seats (3 seats)
+            # 2. Prefer seats closer to middle of seat range
+            # 3. Prefer seats with fewer adjacent booked seats
+            suggested_seats = []
+            seat_numbers = []
+            seat_map = {}
+            for seat in available_seats:
+                try:
+                    num = int(seat['seat_number'][1:])
+                    seat_numbers.append(num)
+                    seat_map[num] = seat['id']
+                except:
+                    continue
+            seat_numbers.sort()
+            middle = seat_numbers[len(seat_numbers)//2] if seat_numbers else 0
+
+            def adjacent_booked_count(num):
+                count = 0
+                for adj in [num-1, num+1]:
+                    adj_id = seat_map.get(adj)
+                    if adj_id and adj_id in booked_seat_ids:
+                        count += 1
+                return count
+
+            # Try to find 3 contiguous seats with minimal adjacent booked seats sum and close to middle
+            best_score = None
+            best_group = None
+            for i in range(len(seat_numbers)-2):
+                group = seat_numbers[i:i+3]
+                if group[1] == group[0]+1 and group[2] == group[1]+1:
+                    adj_sum = sum(adjacent_booked_count(n) for n in group)
+                    dist_to_middle = abs(group[1] - middle)
+                    score = (adj_sum, dist_to_middle)
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_group = group
+            if best_group:
+                suggested_seats = [seat_map[n] for n in best_group]
+            else:
+                # If no contiguous group, suggest up to 3 seats closest to middle with least adjacent booked seats
+                seat_scores = []
+                for n in seat_numbers:
+                    adj = adjacent_booked_count(n)
+                    dist = abs(n - middle)
+                    seat_scores.append((adj, dist, n))
+                seat_scores.sort()
+                suggested_seats = [seat_map[n] for _, _, n in seat_scores[:3]]
+
+            return jsonify({'success': True, 'suggested_seats': suggested_seats})
+    except Exception as e:
+        print(f"Error in AI seat suggestion: {e}")
         traceback.print_exc()
         return jsonify({'success': False, 'message': 'Internal server error'}), 500
     finally:
@@ -220,10 +318,18 @@ def book_seats():
     seat_id = data.get('seat_id')
     source_city = data.get('source_city')
     destination_city = data.get('destination_city')
+    booking_date = data.get('booking_date')
 
-    if not all([user_id, username, train_id, time_slot_id, seat_id, source_city, destination_city]):
+    if not all([user_id, username, train_id, time_slot_id, seat_id, source_city, destination_city, booking_date]):
         print("Missing booking information in request")
         return jsonify({'success': False, 'message': 'Missing booking information'}), 400
+
+    # Validate booking_date format
+    try:
+        datetime.datetime.strptime(booking_date, '%Y-%m-%d')
+    except Exception as e:
+        print(f"Invalid booking_date format: {booking_date}, error: {e}")
+        return jsonify({'success': False, 'message': 'Invalid booking_date format, expected YYYY-MM-DD'}), 400
 
     conn = get_db_connection()
     if conn is None:
@@ -234,17 +340,17 @@ def book_seats():
         with conn.cursor() as cursor:
             cursor.execute("""
                 SELECT id FROM bookings
-                WHERE train_id=%s AND time_slot_id=%s AND seat_id=%s
-            """, (train_id, time_slot_id, seat_id))
+                WHERE train_id=%s AND time_slot_id=%s AND seat_id=%s AND booking_date=%s
+            """, (train_id, time_slot_id, seat_id, booking_date))
             existing_booking = cursor.fetchone()
             if existing_booking:
                 print("Seat already booked")
                 return jsonify({'success': False, 'message': 'Seat already booked'}), 409
 
             cursor.execute("""
-                INSERT INTO bookings (user_id, username, train_id, time_slot_id, seat_id, source_city, destination_city)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, username, train_id, time_slot_id, seat_id, source_city, destination_city))
+                INSERT INTO bookings (user_id, username, train_id, time_slot_id, seat_id, source_city, destination_city, booking_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, username, train_id, time_slot_id, seat_id, source_city, destination_city, booking_date))
             conn.commit()
             print("Booking successful")
             return jsonify({'success': True, 'message': 'Booking successful'})
@@ -269,7 +375,7 @@ def get_user_bookings():
             if role == 'admin':
                 cursor.execute("""
                     SELECT b.id, u.name AS username, t.name AS train_name, ts.slot_time AS time_slot, s.seat_number AS seat_name,
-                           c1.name AS source_city_name, c2.name AS destination_city_name
+                           c1.name AS source_city_name, c2.name AS destination_city_name, b.booking_date
                     FROM bookings b
                     JOIN users u ON b.user_id = u.id
                     JOIN trains t ON b.train_id = t.id
@@ -285,7 +391,7 @@ def get_user_bookings():
                     return jsonify({'success': False, 'message': 'Username is required'}), 400
                 cursor.execute("""
                     SELECT b.id, t.name AS train_name, ts.slot_time AS time_slot, s.seat_number AS seat_name,
-                           c1.name AS source_city_name, c2.name AS destination_city_name
+                           c1.name AS source_city_name, c2.name AS destination_city_name, b.booking_date
                     FROM bookings b
                     JOIN trains t ON b.train_id = t.id
                     JOIN time_slots ts ON b.time_slot_id = ts.id

@@ -5,6 +5,7 @@ import Register from './components/Register';
 import Booking from './components/Booking';
 import AdminPanel from './components/AdminPanel';
 import AdminUsers from './components/AdminUsers';
+import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
@@ -12,9 +13,21 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/booking" element={<Booking />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/booking" element={
+          <PrivateRoute>
+            <Booking />
+          </PrivateRoute>
+        } />
+        <Route path="/admin" element={
+          <PrivateRoute>
+            <AdminPanel />
+          </PrivateRoute>
+        } />
+        <Route path="/admin/users" element={
+          <PrivateRoute>
+            <AdminUsers />
+          </PrivateRoute>
+        } />
       </Routes>
     </Router>
   );

@@ -1,33 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';  // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 
 const AdminPanel = () => {
   const [bookings, setBookings] = useState([]);
-  const navigate = useNavigate();  // Hook to navigate
+  const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('/api/bookings', { params: { role: 'admin' } }).then(res => {
-      if (res.data.success) {
-        setBookings(res.data.bookings);
+    async function fetchBookings() {
+      try {
+        const res = await axios.get('/api/bookings', { params: { role: 'admin' } });
+        if (res.data.success) {
+          const bookingsWithFormattedDate = res.data.bookings.map(b => ({
+            ...b,
+            booking_date: b.booking_date ? new Date(b.booking_date).toLocaleDateString('en-GB') : ''
+          }));
+          setBookings(bookingsWithFormattedDate);
+        }
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
       }
-    });
+    }
+    fetchBookings();
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('userId');
     localStorage.removeItem('username');
-    navigate('/');  // Redirect to localhost:3000
+    navigate('/');
   };
 
   return (
     <div style={styles.pageContainer}>
       <div style={styles.panelContainer}>
-        <button 
-          onClick={handleLogout} 
-          style={styles.logoutButton}>
-          Logout
-        </button>
+        <div style={styles.logoutContainer}>
+          <button onClick={handleLogout} style={styles.logoutButton}>
+            Logout
+          </button>
+        </div>
         <h2 style={styles.heading}>Admin Panel - All Bookings</h2>
         <div style={{ overflowX: 'auto' }}>
           <table style={styles.table}>
@@ -38,6 +48,7 @@ const AdminPanel = () => {
                 <th style={styles.th}>Seat Name</th>
                 <th style={styles.th}>Train Name</th>
                 <th style={styles.th}>Time Slot</th>
+                <th style={styles.th}>Booking Date</th>
                 <th style={styles.th}>Source City</th>
                 <th style={styles.th}>Destination City</th>
               </tr>
@@ -47,13 +58,15 @@ const AdminPanel = () => {
                 <tr
                   key={booking.id}
                   style={{ cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f1f1'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}>
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f1f1f1')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
+                >
                   <td style={styles.td}>{booking.id}</td>
                   <td style={styles.td}>{booking.username}</td>
                   <td style={styles.td}>{booking.seat_name}</td>
                   <td style={styles.td}>{booking.train_name}</td>
                   <td style={styles.td}>{booking.time_slot}</td>
+                  <td style={styles.td}>{booking.booking_date}</td>
                   <td style={styles.td}>{booking.source_city_name}</td>
                   <td style={styles.td}>{booking.destination_city_name}</td>
                 </tr>
@@ -66,40 +79,45 @@ const AdminPanel = () => {
   );
 };
 
-// Internal CSS styles
 const styles = {
   pageContainer: {
     minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: 'linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%)',
+    backgroundImage: "url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg')",
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center center',
     padding: '20px',
   },
   panelContainer: {
-    backgroundColor: '#fff',
+    position: 'relative',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     padding: '30px',
     borderRadius: '10px',
     boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
     width: '100%',
     maxWidth: '1000px',
   },
-  heading: {
-    textAlign: 'center',
-    marginBottom: '20px',
-    color: '#333',
+  logoutContainer: {
+    position: 'absolute',
+    top: '15px',
+    right: '15px',
   },
   logoutButton: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    padding: '10px 15px',
+    padding: '8px 12px',
     backgroundColor: '#e74c3c',
     color: 'white',
     border: 'none',
     borderRadius: '5px',
     cursor: 'pointer',
     fontSize: '14px',
+  },
+  heading: {
+    textAlign: 'center',
+    marginBottom: '20px',
+    color: '#333',
   },
   table: {
     width: '100%',

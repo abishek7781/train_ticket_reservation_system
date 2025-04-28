@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,7 +16,10 @@ const Booking = () => {
   const [destinationCity, setDestinationCity] = useState('');
   const [bookingDate, setBookingDate] = useState('');
   const [bookings, setBookings] = useState([]);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptBooking, setReceiptBooking] = useState(null);
 
+  const receiptRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -155,6 +158,37 @@ const Booking = () => {
     navigate('/');
   };
 
+  const openReceipt = (booking) => {
+    setReceiptBooking(booking);
+    setShowReceipt(true);
+  };
+
+  const closeReceipt = () => {
+    setShowReceipt(false);
+    setReceiptBooking(null);
+  };
+
+  const printReceipt = () => {
+    if (!receiptRef.current) return;
+    const printWindow = window.open('', '', 'width=400,height=600');
+    printWindow.document.write('<html><head><title>Booking Receipt</title>');
+    printWindow.document.write('<style>body{font-family: Arial, sans-serif; padding: 20px;} h2 {text-align: center;} p {font-size: 14px; margin: 5px 0;}</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(receiptRef.current.innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  // Calculate min and max dates for booking date input
+  const todayDate = new Date();
+  const minDate = todayDate.toISOString().split('T')[0];
+  const maxDateObj = new Date(todayDate);
+  maxDateObj.setDate(maxDateObj.getDate() + 10);
+  const maxDate = maxDateObj.toISOString().split('T')[0];
+
   return (
     <div style={styles.pageContainer}>
       <div style={styles.card}>
@@ -166,9 +200,23 @@ const Booking = () => {
         <h1 style={styles.title}>🚂 Train Ticket Booking</h1>
 
         <section style={styles.form}>
-          <Input label="Booking Date" type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} minDate today maxDays={9} />
-          <Select label="Source City" value={sourceCity} onChange={e => setSourceCity(e.target.value)} options={cities} />
-          <Select label="Destination City" value={destinationCity} onChange={e => setDestinationCity(e.target.value)} options={cities} />
+          <Input
+            label="Booking Date"
+            type="date"
+            value={bookingDate}
+            onChange={(e) => setBookingDate(e.target.value)}
+            minDate={minDate}
+            maxDate={maxDate}
+          />
+          {(() => {
+            const filteredDestCities = cities.filter(city => city.id !== Number(sourceCity));
+            return (
+              <>
+                <Select label="Source City" value={sourceCity} onChange={e => setSourceCity(e.target.value)} options={cities} />
+                <Select label="Destination City" value={destinationCity} onChange={e => setDestinationCity(e.target.value)} options={filteredDestCities} />
+              </>
+            );
+          })()}
           <Select label="Train" value={selectedTrain} onChange={e => setSelectedTrain(e.target.value)} options={trains} nameKey="name" />
           <Select label="Time Slot" value={selectedTimeSlot} onChange={e => setSelectedTimeSlot(e.target.value)} options={timeSlots} nameKey="slot_time" />
         </section>
@@ -203,7 +251,7 @@ const Booking = () => {
           <table style={styles.table}>
             <thead>
               <tr>
-                {['Booking ID', 'Train', 'Time Slot', 'Date', 'Seat', 'From', 'To'].map((head, idx) => (
+                {['Booking ID', 'Train', 'Time Slot', 'Date', 'Seat', 'From', 'To', 'Receipt'].map((head, idx) => (
                   <th key={idx} style={styles.th}>{head}</th>
                 ))}
               </tr>
@@ -218,23 +266,41 @@ const Booking = () => {
                   <td style={styles.td}>{booking.seat_name}</td>
                   <td style={styles.td}>{booking.source_city_name}</td>
                   <td style={styles.td}>{booking.destination_city_name}</td>
+                  <td style={styles.td}>
+                    <button onClick={() => openReceipt(booking)} style={styles.receiptBtn}>Print</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {showReceipt && receiptBooking && (
+          <div style={styles.receiptOverlay} onClick={closeReceipt}>
+            <div style={styles.receiptContent} ref={receiptRef} onClick={e => e.stopPropagation()}>
+              <h2>🎟️ Booking Receipt</h2>
+              <p><strong>Booking ID:</strong> {receiptBooking.id}</p>
+              <p><strong>Train:</strong> {receiptBooking.train_name}</p>
+              <p><strong>Time Slot:</strong> {receiptBooking.time_slot}</p>
+              <p><strong>Date:</strong> {new Date(receiptBooking.booking_date).toLocaleDateString('en-GB')}</p>
+              <p><strong>Seat:</strong> {receiptBooking.seat_name}</p>
+              <p><strong>From:</strong> {receiptBooking.source_city_name}</p>
+              <p><strong>To:</strong> {receiptBooking.destination_city_name}</p>
+              <button onClick={printReceipt} style={styles.printBtn}>Print Receipt</button>
+              <button onClick={closeReceipt} style={styles.closeBtn}>Close</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const Input = ({ label, value, onChange, type = 'text', minDate, today, maxDays }) => {
-  const min = today ? new Date().toISOString().split('T')[0] : undefined;
-  const max = today && maxDays ? new Date(Date.now() + maxDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined;
+const Input = ({ label, value, onChange, type = 'text', minDate, maxDate }) => {
   return (
     <div style={styles.formGroup}>
       <label style={styles.label}>{label}</label>
-      <input type={type} value={value} onChange={onChange} min={minDate || min} max={max} style={styles.input} />
+      <input type={type} value={value} onChange={onChange} min={minDate} max={maxDate} style={styles.input} />
     </div>
   );
 };
@@ -257,121 +323,237 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: "url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg')",
-    backgroundSize: 'cover',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center center',
-    padding: '20px',
+    backgroundColor: '#f8fafc',
+    padding: '2rem',
+    fontFamily: "'Inter', sans-serif",
   },
   card: {
     backgroundColor: 'white',
-    borderRadius: '16px',
-    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
-    padding: '30px',
+    borderRadius: '1rem',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    padding: '2.5rem',
     width: '100%',
-    maxWidth: '1000px',
+    maxWidth: '1200px',
+    margin: '1rem',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '25px',
+    marginBottom: '2rem',
+    paddingBottom: '1.5rem',
+    borderBottom: '1px solid #e2e8f0',
   },
   greeting: {
-    fontSize: '22px',
-    fontWeight: 'bold',
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    color: '#1e293b',
   },
   username: {
-    color: '#6a11cb',
+    color: '#2563eb',
+    fontWeight: '700',
   },
   logoutBtn: {
-    backgroundColor: '#ff4d4d',
+    backgroundColor: '#ef4444',
     border: 'none',
-    padding: '10px 16px',
-    borderRadius: '8px',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
     color: 'white',
     fontWeight: '600',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '0.875rem',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: '#dc2626',
+    },
   },
   title: {
     textAlign: 'center',
-    fontSize: '28px',
-    marginBottom: '20px',
-    color: '#333',
+    fontSize: '1.875rem',
+    marginBottom: '2rem',
+    color: '#1e293b',
+    fontWeight: '700',
+    letterSpacing: '-0.025em',
   },
   form: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '20px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '1.5rem',
+    marginBottom: '2rem',
   },
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
+    gap: '0.5rem',
   },
   label: {
-    marginBottom: '5px',
-    fontWeight: '600',
-    color: '#555',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#475569',
   },
   input: {
-    padding: '10px',
-    borderRadius: '8px',
-    border: '1px solid #ccc',
+    padding: '0.75rem 1rem',
+    borderRadius: '0.5rem',
+    border: '1px solid #cbd5e1',
+    fontSize: '0.875rem',
+    transition: 'all 0.2s ease',
+    '&:focus': {
+      outline: 'none',
+      borderColor: '#2563eb',
+      boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.1)',
+    },
   },
   sectionTitle: {
-    marginTop: '30px',
-    marginBottom: '15px',
-    fontSize: '22px',
-    color: '#444',
+    margin: '2rem 0 1.5rem',
+    fontSize: '1.25rem',
+    color: '#1e293b',
+    fontWeight: '600',
+    paddingBottom: '0.5rem',
+    borderBottom: '2px solid #e2e8f0',
   },
   seatsGrid: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '10px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+    gap: '0.75rem',
+    marginBottom: '2rem',
   },
   seat: {
-    width: '48px',
-    height: '48px',
+    width: '100%',
+    aspectRatio: '1',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: '50%',
-    fontWeight: 'bold',
-    transition: '0.3s',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    borderRadius: '0.375rem',
+    fontWeight: '600',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    fontSize: '0.875rem',
   },
   bookBtn: {
     width: '100%',
-    padding: '15px',
-    marginTop: '20px',
-    backgroundColor: '#6a11cb',
+    padding: '1rem',
+    marginTop: '1rem',
+    backgroundColor: '#2563eb',
     color: 'white',
-    fontWeight: 'bold',
-    borderRadius: '10px',
+    fontWeight: '600',
+    borderRadius: '0.5rem',
     border: 'none',
-    fontSize: '16px',
+    fontSize: '1rem',
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: '#1d4ed8',
+    },
   },
   tableContainer: {
-    marginTop: '20px',
+    marginTop: '1.5rem',
     overflowX: 'auto',
+    borderRadius: '0.5rem',
+    border: '1px solid #e2e8f0',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
+    minWidth: '800px',
   },
   th: {
-    padding: '12px',
-    backgroundColor: '#f5f5f5',
-    fontWeight: 'bold',
-    color: '#555',
+    padding: '1rem',
+    backgroundColor: '#f8fafc',
+    fontWeight: '600',
+    color: '#475569',
     textAlign: 'left',
+    fontSize: '0.875rem',
+    borderBottom: '1px solid #e2e8f0',
   },
   td: {
-    padding: '12px',
-    borderBottom: '1px solid #ddd',
+    padding: '1rem',
+    borderBottom: '1px solid #e2e8f0',
+    color: '#475569',
+    fontSize: '0.875rem',
+  },
+  receiptBtn: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.375rem',
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: '#1d4ed8',
+    },
+  },
+  receiptOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    backdropFilter: 'blur(2px)',
+  },
+  receiptContent: {
+    backgroundColor: 'white',
+    padding: '2rem',
+    borderRadius: '1rem',
+    width: '100%',
+    maxWidth: '400px',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+    textAlign: 'left',
+    '& h2': {
+      fontSize: '1.5rem',
+      fontWeight: '700',
+      marginBottom: '1.5rem',
+      color: '#1e293b',
+    },
+    '& p': {
+      marginBottom: '0.75rem',
+      color: '#475569',
+      '& strong': {
+        fontWeight: '600',
+        color: '#1e293b',
+        display: 'inline-block',
+        width: '100px',
+      },
+    },
+  },
+  printBtn: {
+    marginTop: '1.5rem',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.5rem',
+    cursor: 'pointer',
+    fontWeight: '600',
+    width: '100%',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: '#1d4ed8',
+    },
+  },
+  closeBtn: {
+    marginTop: '0.75rem',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#64748b',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.5rem',
+    cursor: 'pointer',
+    fontWeight: '600',
+    width: '100%',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: '#475569',
+    },
   },
 };
 
 export default Booking;
+
+

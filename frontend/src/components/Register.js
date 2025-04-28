@@ -26,11 +26,12 @@ function Register() {
   return (
     <div style={styles.pageContainer}>
       <div style={styles.registerContainer}>
-        <h2 style={styles.heading}>Register</h2>
+        <h2 style={styles.heading}>👋🏻 Register Here !</h2>
         <form onSubmit={handleRegister} style={styles.form}>
           <label style={styles.label}>Name:</label>
           <input 
-            type="text" 
+            type="text"
+            placeholder='Username'
             value={name} 
             onChange={(e) => setName(e.target.value)} 
             required 
@@ -39,6 +40,7 @@ function Register() {
           <label style={styles.label}>Email:</label>
           <input 
             type="email" 
+            placeholder='user@example.com'
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
             required 
@@ -47,6 +49,7 @@ function Register() {
           <label style={styles.label}>Password:</label>
           <input 
             type="password" 
+            placeholder='Password'
             value={password} 
             onChange={(e) => setPassword(e.target.value)} 
             required 
@@ -69,70 +72,106 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: "url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg')",
-    backgroundSize: 'cover',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center center',
-    padding: '20px',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%)',
+    padding: '2rem',
+    fontFamily: "'Inter', sans-serif",
+    position: 'relative',
+    overflow: 'hidden',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundImage: 'url(https://i.gifer.com/7Xqg.gif)',
+      backgroundSize: 'cover',
+      opacity: '0.05',
+      zIndex: 0,
+    }
   },
   registerContainer: {
-    backgroundColor: '#ffffff',
-    padding: '40px 30px',
-    borderRadius: '16px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: '1.5rem',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
+    padding: '3rem',
     width: '100%',
-    maxWidth: '400px',
-    transition: 'transform 0.3s ease',
+    maxWidth: '450px',
+    position: 'relative',
+    zIndex: 1,
+    backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
   },
   heading: {
+    fontSize: '2rem',
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: '25px',
-    color: '#333333',
-    fontSize: '28px',
-    fontWeight: '600',
+    marginBottom: '2rem',
+    color: '#1e293b',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    '&::before': {
+      content: '"👋🏻"',
+      fontSize: '1.2em',
+    }
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '15px',
+    gap: '1.5rem',
   },
   label: {
-    fontSize: '14px',
-    color: '#666666',
-    marginBottom: '5px',
-    fontWeight: '500',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: '0.25rem',
   },
   input: {
-    padding: '12px 15px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '14px',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+    padding: '1rem 1.25rem',
+    borderRadius: '0.75rem',
+    border: '1px solid #cbd5e1',
+    fontSize: '0.875rem',
+    transition: 'all 0.3s ease',
+    background: 'white',
+    '&:focus': {
+      outline: 'none',
+      borderColor: '#3b82f6',
+      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.15)',
+    },
   },
   button: {
-    marginTop: '10px',
-    padding: '12px',
-    background: 'linear-gradient(135deg, #43cea2 0%, #185a9d 100%)',
-    color: '#ffffff',
-    fontSize: '16px',
+    padding: '1rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+    color: 'white',
     fontWeight: '600',
+    borderRadius: '0.75rem',
     border: 'none',
-    borderRadius: '8px',
+    fontSize: '1rem',
     cursor: 'pointer',
-    transition: 'background 0.3s ease, transform 0.3s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: '0 4px 6px rgba(59, 130, 246, 0.2)',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: '0 6px 8px rgba(59, 130, 246, 0.3)',
+    },
   },
   footerText: {
-    marginTop: '20px',
-    fontSize: '14px',
+    marginTop: '1.5rem',
+    fontSize: '0.875rem',
     textAlign: 'center',
-    color: '#777777',
+    color: '#64748b',
   },
   link: {
-    color: '#43cea2',
+    color: '#3b82f6',
     textDecoration: 'none',
     fontWeight: '600',
-    marginLeft: '5px',
-  }
+    transition: 'color 0.2s ease',
+    '&:hover': {
+      color: '#2563eb',
+    },
+  },
 };
 
 export default Register;

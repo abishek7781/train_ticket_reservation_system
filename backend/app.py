@@ -409,6 +409,22 @@ def get_user_bookings():
     finally:
         conn.close()
 
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'success': False, 'message': 'Database connection error'}), 500
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, name, email, role, created_at FROM users")
+            users = cursor.fetchall()
+            return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        conn.close()
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):

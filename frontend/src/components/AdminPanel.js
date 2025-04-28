@@ -30,6 +30,10 @@ const AdminPanel = () => {
     navigate('/');
   };
 
+  const goToAdminUsers = () => {
+    navigate('/admin/users');
+  };
+
   return (
     <div style={styles.pageContainer}>
       <div style={styles.panelContainer}>
@@ -38,7 +42,10 @@ const AdminPanel = () => {
             Logout
           </button>
         </div>
-        <h2 style={styles.heading}>Admin Panel - All Bookings</h2>
+        <h2 style={styles.heading}>🧑🏻‍💻 Admin Panel - All Bookings 🎫</h2>
+        <button onClick={goToAdminUsers} style={styles.adminUsersButton}>
+          View Admin Users
+        </button>
         <div style={{ overflowX: 'auto' }}>
           <table style={styles.table}>
             <thead>
@@ -85,61 +92,104 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: "url('https://t4.ftcdn.net/jpg/10/51/04/05/360_F_1051040558_EbAfCj1KSiZbe9Jp9petzJALUE5HcFdG.jpg')",
-    backgroundSize: 'cover',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center center',
-    padding: '20px',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%)',
+    padding: '2rem',
+    fontFamily: "'Inter', sans-serif",
+    position: 'relative',
+    overflow: 'hidden',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundImage: 'url(https://i.gifer.com/7Xqg.gif)',
+      backgroundSize: 'cover',
+      opacity: '0.05',
+      zIndex: 0,
+    }
   },
   panelContainer: {
     position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    padding: '30px',
-    borderRadius: '10px',
-    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: '2.5rem',
+    borderRadius: '1.5rem',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
     width: '100%',
-    maxWidth: '1000px',
+    maxWidth: '1200px',
+    backdropFilter: 'blur(8px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
   },
   logoutContainer: {
     position: 'absolute',
-    top: '15px',
-    right: '15px',
+    top: '1.5rem',
+    right: '1.5rem',
   },
   logoutButton: {
-    padding: '8px 12px',
-    backgroundColor: '#e74c3c',
+    padding: '0.75rem 1.5rem',
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
     color: 'white',
     border: 'none',
-    borderRadius: '5px',
+    borderRadius: '0.75rem',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 6px rgba(220, 38, 38, 0.1)',
+    '&:hover': {
+      transform: 'translateY(-1px)',
+      boxShadow: '0 6px 8px rgba(220, 38, 38, 0.2)',
+    },
+  },
+  adminUsersButton: {
+    marginBottom: '1rem',
+    padding: '0.75rem 1.5rem',
+    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.75rem',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    fontWeight: '600',
+    boxShadow: '0 4px 6px rgba(59, 130, 246, 0.1)',
+    transition: 'all 0.3s ease',
   },
   heading: {
     textAlign: 'center',
-    marginBottom: '20px',
-    color: '#333',
+    marginBottom: '2rem',
+    color: '#1e293b',
+    fontSize: '1.875rem',
+    fontWeight: '700',
+    paddingBottom: '1rem',
+    borderBottom: '2px solid #e2e8f0',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    marginTop: '20px',
-    backgroundColor: '#fff',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    borderRadius: '8px',
+    marginTop: '1.5rem',
+    backgroundColor: 'white',
+    borderRadius: '1rem',
     overflow: 'hidden',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
   },
   th: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#3b82f6',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
     color: 'white',
     textAlign: 'left',
-    padding: '12px 15px',
-    fontSize: '16px',
+    padding: '1rem 1.25rem',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    position: 'sticky',
+    top: 0,
   },
   td: {
-    padding: '12px 15px',
-    borderBottom: '1px solid #ddd',
-    fontSize: '15px',
-    color: '#555',
+    padding: '1rem 1.25rem',
+    borderBottom: '1px solid #e2e8f0',
+    fontSize: '0.875rem',
+    color: '#475569',
+    transition: 'all 0.2s ease',
   },
 };
 

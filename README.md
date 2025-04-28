@@ -1,141 +1,58 @@
-# Smart Train Ticket Reservation System
+# Train Ticket Booking Application
 
-This project is a full-stack Smart Train Ticket Reservation System with a React frontend, Flask backend, and MySQL database. It supports user registration, login, AI-based seat suggestions, ticket booking, and an admin panel for managing bookings.
+## Overview
 
----
+This application allows users to book train tickets with AI-assisted seat suggestions. The AI provides multiple seat suggestion strategies to help users select the best available seats.
 
-## Prerequisites
+## Features
 
-- Node.js and npm installed (for frontend)
-- Python 3.x installed (for backend)
-- MySQL server installed and running
-- Git installed
+- User registration and login
+- Browse cities, trains, and time slots
+- View available seats for selected train and time slot
+- AI seat suggestions with multiple strategies:
+  - Default: Contiguous seats near the middle with fewer adjacent booked seats
+  - Window/Aisle Preference: Suggests window or aisle seats
+  - Group Seating: Suggests grouped seats for larger groups
+  - Balanced Distribution: Suggests seats spread evenly across the train
+- Booking confirmation and receipt printing
+- User booking history
+- Admin panel for managing users and bookings (if applicable)
 
----
+## Setup Instructions
 
-## Installation and Setup
+1. Backend:
+   - Requires Python 3.x
+   - Install dependencies: `pip install -r backend/requirements.txt`
+   - Configure MySQL database with the schema in `backend/db_schema.sql`
+   - Update database credentials in `backend/app.py` if needed
+   - Run backend server: `python backend/app.py`
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/abishek7781/train_ticket_reservation_system.git
-cd train_ticket_reservation_system
-```
-
-### 2. Backend Setup
-
-- Navigate to the backend directory:
-
-```bash
-cd backend
-```
-
-- Create a Python virtual environment (optional but recommended):
-
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-- Install backend dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-- Setup MySQL database:
-
-  - Create a database named `train_reservation`.
-  - Update MySQL credentials in `backend/app.py` if needed (default username: `root`, password: `abishek21`).
-  - Run the SQL schema script to create tables:
-
-```bash
-mysql -u root -p train_reservation < backend/db_schema.sql
-```
-
-- Seed initial data (cities, trains, time slots, etc.) if you have seed scripts:
-
-```bash
-python backend/seed_time_slots.py
-```
-
-- Create an admin user (optional):
-
-```bash
-python backend/create_admin_user.py
-```
-
-- Run the backend server:
-
-```bash
-python backend/app.py
-```
-
-The backend server will start on `http://localhost:5001`.
-
----
-
-### 3. Frontend Setup
-
-- Open a new terminal and navigate to the frontend directory:
-
-```bash
-cd frontend
-```
-
-- Install frontend dependencies:
-
-```bash
-npm install
-```
-
-- Start the frontend development server:
-
-```bash
-npm start
-```
-
-The frontend will start on `http://localhost:3000` and proxy API requests to the backend.
-
----
+2. Frontend:
+   - Requires Node.js and npm
+   - Navigate to `frontend` directory
+   - Install dependencies: `npm install`
+   - Run frontend server: `npm start`
 
 ## Usage
 
-- Register a new user or login with existing credentials.
-- Book train tickets by selecting city, train, time slot, and seats.
-- Booked seats will be disabled to prevent double booking.
-- Admin users can login to the admin panel to view all bookings and customer info.
-- Use the logout button on booking and admin pages to logout and return to login page.
+- Register a new user or login with existing credentials
+- Select booking date, source and destination cities
+- Choose train and time slot
+- Select AI seat suggestion strategy from the dropdown
+- View AI suggested seats highlighted in blue
+- Select seats and confirm booking
+- View and print booking receipts
 
----
+## GitHub Repository
 
-## Git Usage
+The project is version controlled and pushed to GitHub repository named "v".
 
-To push changes to the GitHub repository:
+## Notes
 
-```bash
-git add .
-git commit -m "Your commit message"
-git push origin main
-```
-
----
-
-## Troubleshooting
-
-- Ensure MySQL server is running and accessible.
-- Verify backend API URL and credentials in frontend proxy and backend config.
-- Check for port conflicts on 3000 (frontend) and 5001 (backend).
-- Review console logs for errors.
-
----
+- Ensure backend server is running on port 5001
+- Frontend proxies API requests to backend
+- AI seat suggestion strategies can be extended or customized in backend/app.py
 
 ## License
 
-This project is licensed under the MIT License.
-
----
-
-## Contact
-
-For any questions or issues, please contact the project maintainer.
+MIT License

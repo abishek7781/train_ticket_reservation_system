@@ -156,7 +156,6 @@ def get_trains(city_id):
         with conn.cursor() as cursor:
             cursor.execute("SELECT DISTINCT id, name FROM trains WHERE city_id=%s", (city_id,))
             trains = cursor.fetchall()
-            # Remove duplicates by id in Python as well
             unique_trains = []
             seen_ids = set()
             for train in trains:
@@ -183,7 +182,6 @@ def get_time_slots(train_id):
         with conn.cursor() as cursor:
             cursor.execute("SELECT DISTINCT id, slot_time FROM time_slots WHERE train_id=%s", (train_id,))
             time_slots = cursor.fetchall()
-            # Remove duplicates by id in Python as well
             unique_time_slots = []
             seen_ids = set()
             for slot in time_slots:
@@ -212,7 +210,6 @@ def get_seats(train_id, time_slot_id):
         with conn.cursor() as cursor:
             cursor.execute("SELECT DISTINCT id, seat_number FROM seats WHERE train_id=%s", (train_id,))
             seats = cursor.fetchall()
-            # Remove duplicates by id in Python as well
             unique_seats = []
             seen_ids = set()
             for seat in seats:
@@ -235,69 +232,121 @@ def get_seats(train_id, time_slot_id):
 @app.route('/api/ai_suggest_seats/<int:train_id>/<int:time_slot_id>', methods=['GET'])
 def ai_suggest_seats(train_id, time_slot_id):
     print(f"AI suggesting seats for train_id: {train_id}, time_slot_id: {time_slot_id}")
+    strategy = request.args.get('strategy', 'default')
     conn = get_db_connection()
     if conn is None:
         print("Database connection error")
         return jsonify({'success': False, 'message': 'Database connection error'}), 500
     try:
         with conn.cursor() as cursor:
-            # Get all seats for the train
             cursor.execute("SELECT DISTINCT id, seat_number FROM seats WHERE train_id=%s ORDER BY seat_number", (train_id,))
             seats = cursor.fetchall()
-            # Get booked seats for the train and time slot
             cursor.execute("SELECT seat_id FROM bookings WHERE train_id=%s AND time_slot_id=%s", (train_id, time_slot_id))
             booked_seats = cursor.fetchall()
             booked_seat_ids = {seat['seat_id'] for seat in booked_seats}
-            # Filter available seats
             available_seats = [seat for seat in seats if seat['id'] not in booked_seat_ids]
-            # Enhanced AI heuristic:
-            # 1. Prefer contiguous seats (3 seats)
-            # 2. Prefer seats closer to middle of seat range
-            # 3. Prefer seats with fewer adjacent booked seats
-            suggested_seats = []
-            seat_numbers = []
+
+            def parse_seat_number(seat_number):
+                if len(seat_number) < 2:
+                    return None, None
+                row = seat_number[0].upper()
+                try:
+                    number = int(seat_number[1:])
+                except:
+                    return row, None
+                return row, number
+
             seat_map = {}
             for seat in available_seats:
-                try:
-                    num = int(seat['seat_number'][1:])
-                    seat_numbers.append(num)
-                    seat_map[num] = seat['id']
-                except:
-                    continue
-            seat_numbers.sort()
-            middle = seat_numbers[len(seat_numbers)//2] if seat_numbers else 0
+                row, number = parse_seat_number(seat['seat_number'])
+                if row is not None and number is not None:
+                    if row not in seat_map:
+                        seat_map[row] = []
+                    seat_map[row].append((number, seat['id']))
+            for row in seat_map:
+                seat_map[row].sort(key=lambda x: x[0])
 
-            def adjacent_booked_count(num):
-                count = 0
-                for adj in [num-1, num+1]:
-                    adj_id = seat_map.get(adj)
-                    if adj_id and adj_id in booked_seat_ids:
-                        count += 1
-                return count
+            suggested_seats = []
 
-            # Try to find 3 contiguous seats with minimal adjacent booked seats sum and close to middle
-            best_score = None
-            best_group = None
-            for i in range(len(seat_numbers)-2):
-                group = seat_numbers[i:i+3]
-                if group[1] == group[0]+1 and group[2] == group[1]+1:
-                    adj_sum = sum(adjacent_booked_count(n) for n in group)
-                    dist_to_middle = abs(group[1] - middle)
-                    score = (adj_sum, dist_to_middle)
-                    if best_score is None or score < best_score:
-                        best_score = score
+            if strategy == 'window_aisle':
+                window_seats = []
+                aisle_seats = []
+                for row, seats_in_row in seat_map.items():
+                    for number, seat_id in seats_in_row:
+                        if row in ['A', 'F']:
+                            window_seats.append(seat_id)
+                        elif row in ['B', 'E']:
+                            aisle_seats.append(seat_id)
+                suggested_seats = window_seats[:3]
+                if len(suggested_seats) < 3:
+                    suggested_seats += aisle_seats[:3 - len(suggested_seats)]
+                suggested_seats = suggested_seats[:3]
+
+            elif strategy == 'group_seating':
+                max_group_size = 5
+                best_group = []
+                for row, seats_in_row in seat_map.items():
+                    group = [seat_id for _, seat_id in seats_in_row[:max_group_size]]
+                    if len(group) > len(best_group):
                         best_group = group
-            if best_group:
-                suggested_seats = [seat_map[n] for n in best_group]
+                suggested_seats = best_group[:3]
+
+            elif strategy == 'balanced_distribution':
+                rows = sorted(seat_map.keys())
+                total_rows = len(rows)
+                if total_rows == 0:
+                    suggested_seats = []
+                else:
+                    indices = [0, total_rows // 2, total_rows - 1]
+                    seats_chosen = []
+                    for idx in indices:
+                        row = rows[idx]
+                        if seat_map[row]:
+                            seats_chosen.append(seat_map[row][0][1])
+                    suggested_seats = seats_chosen[:3]
+
             else:
-                # If no contiguous group, suggest up to 3 seats closest to middle with least adjacent booked seats
-                seat_scores = []
-                for n in seat_numbers:
-                    adj = adjacent_booked_count(n)
-                    dist = abs(n - middle)
-                    seat_scores.append((adj, dist, n))
-                seat_scores.sort()
-                suggested_seats = [seat_map[n] for _, _, n in seat_scores[:3]]
+                seat_numbers = []
+                seat_id_map = {}
+                for seat in available_seats:
+                    try:
+                        num = int(seat['seat_number'][1:])
+                        seat_numbers.append(num)
+                        seat_id_map[num] = seat['id']
+                    except:
+                        continue
+                seat_numbers.sort()
+                middle = seat_numbers[len(seat_numbers)//2] if seat_numbers else 0
+
+                def adjacent_booked_count(num):
+                    count = 0
+                    for adj in [num-1, num+1]:
+                        adj_id = seat_id_map.get(adj)
+                        if adj_id and adj_id in booked_seat_ids:
+                            count += 1
+                    return count
+
+                best_score = None
+                best_group = None
+                for i in range(len(seat_numbers)-2):
+                    group = seat_numbers[i:i+3]
+                    if group[1] == group[0]+1 and group[2] == group[1]+1:
+                        adj_sum = sum(adjacent_booked_count(n) for n in group)
+                        dist_to_middle = abs(group[1] - middle)
+                        score = (adj_sum, dist_to_middle)
+                        if best_score is None or score < best_score:
+                            best_score = score
+                            best_group = group
+                if best_group:
+                    suggested_seats = [seat_id_map[n] for n in best_group]
+                else:
+                    seat_scores = []
+                    for n in seat_numbers:
+                        adj = adjacent_booked_count(n)
+                        dist = abs(n - middle)
+                        seat_scores.append((adj, dist, n))
+                    seat_scores.sort()
+                    suggested_seats = [seat_id_map[n] for _, _, n in seat_scores[:3]]
 
             return jsonify({'success': True, 'suggested_seats': suggested_seats})
     except Exception as e:
@@ -324,7 +373,6 @@ def book_seats():
         print("Missing booking information in request")
         return jsonify({'success': False, 'message': 'Missing booking information'}), 400
 
-    # Validate booking_date format
     try:
         datetime.datetime.strptime(booking_date, '%Y-%m-%d')
     except Exception as e:

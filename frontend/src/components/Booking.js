@@ -18,6 +18,8 @@ const Booking = () => {
   const [bookings, setBookings] = useState([]);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptBooking, setReceiptBooking] = useState(null);
+  const [showSuggestionInfo, setShowSuggestionInfo] = useState(false);
+  const [aiStrategy, setAiStrategy] = useState('default');
 
   const receiptRef = useRef(null);
   const navigate = useNavigate();
@@ -53,6 +55,7 @@ const Booking = () => {
     setSelectedTimeSlot('');
     setSeats([]);
     setSelectedSeats([]);
+    setShowSuggestionInfo(false);
   }, [sourceCity]);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ const Booking = () => {
     setSelectedTimeSlot('');
     setSeats([]);
     setSelectedSeats([]);
+    setShowSuggestionInfo(false);
   }, [selectedTrain]);
 
   useEffect(() => {
@@ -78,17 +82,21 @@ const Booking = () => {
           setSeats(res.data.seats);
         }
       });
-      axios.get(`/api/ai_suggest_seats/${selectedTrain}/${selectedTimeSlot}`, { params: { date: bookingDate } }).then(res => {
+      axios.get(`/api/ai_suggest_seats/${selectedTrain}/${selectedTimeSlot}`, { params: { date: bookingDate, strategy: aiStrategy } }).then(res => {
         if (res.data.success) {
           setSuggestedSeats(res.data.suggested_seats);
+          setShowSuggestionInfo(true);
+        } else {
+          setShowSuggestionInfo(false);
         }
       });
     } else {
       setSeats([]);
       setSuggestedSeats([]);
+      setShowSuggestionInfo(false);
     }
     setSelectedSeats([]);
-  }, [selectedTrain, selectedTimeSlot, bookingDate]);
+  }, [selectedTrain, selectedTimeSlot, bookingDate, aiStrategy]);
 
   const toggleSeatSelection = (seatId) => {
     if (selectedSeats.includes(seatId)) {
@@ -219,29 +227,47 @@ const Booking = () => {
           })()}
           <Select label="Train" value={selectedTrain} onChange={e => setSelectedTrain(e.target.value)} options={trains} nameKey="name" />
           <Select label="Time Slot" value={selectedTimeSlot} onChange={e => setSelectedTimeSlot(e.target.value)} options={timeSlots} nameKey="slot_time" />
+          <Select label="AI Suggestion Strategy" value={aiStrategy} onChange={e => setAiStrategy(e.target.value)} options={[
+            { id: 'default', name: 'Default (Contiguous Middle Seats)' },
+            { id: 'window_aisle', name: 'Window/Aisle Preference' },
+            { id: 'group_seating', name: 'Group Seating' },
+            { id: 'balanced_distribution', name: 'Balanced Distribution' }
+          ]} nameKey="name" />
         </section>
+
+        {showSuggestionInfo && (
+          <div style={styles.suggestionInfo}>
+            💡 Blue highlighted seats are AI suggested seats to help you choose the best available options.
+          </div>
+        )}
 
         <h3 style={styles.sectionTitle}>🎟️ Select Your Seats</h3>
         <div style={styles.seatsGrid}>
-          {seats.map(seat => (
-            <div
-              key={seat.id}
-              onClick={() => seat.is_available && toggleSeatSelection(seat.id)}
-              style={{
-                ...styles.seat,
-                backgroundColor: selectedSeats.includes(seat.id)
-                  ? '#2ecc71'
-                  : suggestedSeats.includes(seat.id)
-                  ? '#3498db'
-                  : seat.is_available
-                  ? '#bdc3c7'
-                  : '#e74c3c',
-                cursor: seat.is_available ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {seat.seat_number}
-            </div>
-          ))}
+          {seats.map(seat => {
+            const isSuggested = suggestedSeats.includes(seat.id);
+            return (
+              <div
+                key={seat.id}
+                onClick={() => seat.is_available && toggleSeatSelection(seat.id)}
+                style={{
+                  ...styles.seat,
+                  backgroundColor: selectedSeats.includes(seat.id)
+                    ? '#2ecc71'
+                    : isSuggested
+                    ? '#3498db'
+                    : seat.is_available
+                    ? '#bdc3c7'
+                    : '#e74c3c',
+                  cursor: seat.is_available ? 'pointer' : 'not-allowed',
+                  border: isSuggested ? '3px solid #2980b9' : 'none',
+                  boxShadow: isSuggested ? '0 0 10px #2980b9' : 'none',
+                }}
+                title={isSuggested ? 'AI Suggested Seat' : ''}
+              >
+                {seat.seat_number}
+              </div>
+            );
+          })}
         </div>
 
         <button onClick={handleBooking} style={styles.bookBtn}>Confirm Booking</button>
@@ -411,6 +437,16 @@ const styles = {
     paddingBottom: '0.5rem',
     borderBottom: '2px solid #e2e8f0',
   },
+  suggestionInfo: {
+    marginBottom: '1rem',
+    padding: '0.75rem 1rem',
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   seatsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
@@ -555,5 +591,3 @@ const styles = {
 };
 
 export default Booking;
-
-

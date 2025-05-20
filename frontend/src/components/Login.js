@@ -3,10 +3,10 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 
 const profiles = [
-  { src: 'https://cdn-icons-png.freepik.com/256/3135/3135823.png?semt=ais_hybrid', name: 'Aarthi' },
-  { src: 'https://cdn-icons-png.freepik.com/256/3135/3135823.png?semt=ais_hybrid', name: 'Divya' },
-  { src: 'https://cdn-icons-png.freepik.com/256/3135/3135823.png?semt=ais_hybrid', name: 'Ramya' },
-  { src: 'https://cdn-icons-png.freepik.com/256/3135/3135823.png?semt=ais_hybrid', name: 'Renuga' },
+  { src: 'https://cdn-icons-png.flaticon.com/256/12930/12930643.png', name: 'Member 1' },
+  { src: 'https://cdn-icons-png.freepik.com/256/3135/3135823.png?semt=ais_hybrid', name: 'Member 2' },
+  { src: 'https://cdn-icons-png.flaticon.com/256/12930/12930643.png', name: 'Member 3' },
+  { src: 'https://cdn-icons-png.freepik.com/256/3135/3135823.png?semt=ais_hybrid', name: 'Member 4' },
 ];
 
 const Login = () => {
@@ -39,7 +39,7 @@ const Login = () => {
     <div style={styles.pageContainer}>
       <div style={styles.loginContainer}>
         <h1 style={styles.heading}>Smart Train Ticket Reservation System</h1>
-        <h2 style={styles.subHeading}>Login</h2>
+        <h2 style={styles.subHeading}>👋🏻 Login</h2>
         <form onSubmit={handleLogin} style={styles.form}>
           <input
             type="email"

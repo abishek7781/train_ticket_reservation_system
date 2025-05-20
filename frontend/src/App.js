@@ -6,6 +6,7 @@ import Booking from './components/Booking';
 import AdminPanel from './components/AdminPanel';
 import AdminUsers from './components/AdminUsers';
 import PrivateRoute from './components/PrivateRoute';
+import PaymentPage from './components/PaymentPage';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <AdminUsers />
           </PrivateRoute>
         } />
+        <Route path="/payment" element={<PaymentPage />} />
       </Routes>
     </Router>
   );

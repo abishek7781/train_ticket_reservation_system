@@ -46,11 +46,11 @@ function AdminUsers() {
             <tbody>
               {users.map(user => (
                 <tr key={user.id} style={styles.tr}>
-                  <td style={styles.td}>{user.id}</td>
-                  <td style={styles.td}>{user.name}</td>
-                  <td style={styles.td}>{user.email}</td>
-                  <td style={styles.td}>{user.role}</td>
-                  <td style={styles.td}>{user.formatted_created_at}</td>
+                  <td style={styles.td}><b>{user.id}</b></td>
+                  <td style={styles.td}><b>{user.name}</b></td>
+                  <td style={styles.td}><b>{user.email}</b></td>
+                  <td style={styles.td}><b>{user.role}</b></td>
+                  <td style={styles.td}><b>{user.formatted_created_at}</b></td>
                 </tr>
               ))}
             </tbody>

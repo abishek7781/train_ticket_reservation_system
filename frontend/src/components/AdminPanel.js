@@ -44,7 +44,7 @@ const AdminPanel = () => {
         </div>
         <h2 style={styles.heading}>🧑🏻‍💻 Admin Panel - All Bookings 🎫</h2>
         <button onClick={goToAdminUsers} style={styles.adminUsersButton}>
-          View Admin Users
+          View Users Details
         </button>
         <div style={{ overflowX: 'auto' }}>
           <table style={styles.table}>

@@ -17,7 +17,7 @@ def create_admin_user():
         with connection.cursor() as cursor:
             name = 'Admin'
             email = 'admin@aar.com'
-            password = 'admin123'  # Change this password as needed
+            password = 'aarthi123'  # Change this password as needed
             hashed_password = generate_password_hash(password)
             role = 'admin'
             sql = "INSERT INTO users (name, email, password, role, created_at) VALUES (%s, %s, %s, %s, NOW())"

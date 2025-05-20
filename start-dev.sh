@@ -14,10 +14,10 @@ export FLASK_ENV=development
 flask run --host=0.0.0.0 --port=5001 &
 BACKEND_PID=$!
 
-# Start frontend server
+# Start frontend server with HOST=0.0.0.0 to allow external access
 echo "Starting frontend React development server on port 3000..."
 cd ../frontend
-npm start &
+HOST=0.0.0.0 npm start &
 FRONTEND_PID=$!
 
 # Wait for both processes

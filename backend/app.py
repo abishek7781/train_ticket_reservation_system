@@ -481,5 +481,19 @@ def serve_frontend(path):
     else:
         return send_from_directory(app.static_folder, 'index.html')
 
+# Simulated in-memory payment status store
+payment_status_store = {}
+
+@app.route('/api/payment_status/<payment_id>', methods=['GET'])
+def payment_status(payment_id):
+    status = payment_status_store.get(payment_id, 'pending')
+    return jsonify({'success': True, 'status': status})
+
+@app.route('/api/simulate_payment/<payment_id>', methods=['POST'])
+def simulate_payment(payment_id):
+    # This endpoint is for testing to simulate payment confirmation
+    payment_status_store[payment_id] = 'confirmed'
+    return jsonify({'success': True, 'message': f'Payment {payment_id} confirmed'})
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

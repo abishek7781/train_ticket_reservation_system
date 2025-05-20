@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 
 const Booking = () => {
   const [username, setUsername] = useState('');
@@ -20,6 +21,10 @@ const Booking = () => {
   const [receiptBooking, setReceiptBooking] = useState(null);
   const [showSuggestionInfo, setShowSuggestionInfo] = useState(false);
   const [aiStrategy, setAiStrategy] = useState('default');
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  const [paymentId, setPaymentId] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState('pending');
 
   const receiptRef = useRef(null);
   const navigate = useNavigate();
@@ -106,18 +111,54 @@ const Booking = () => {
     }
   };
 
-  const handleBooking = () => {
+  // Show payment popup on confirm booking click
+  const handleConfirmClick = () => {
     if (!sourceCity || !destinationCity || !selectedTrain || !selectedTimeSlot || selectedSeats.length === 0) {
       alert('Please complete all fields to book.');
       return;
     }
+    // Generate a unique payment ID (simple example using timestamp)
+    const newPaymentId = `pay_${Date.now()}`;
+    setPaymentId(newPaymentId);
+
+    // Prepare payment data for QR code (can be booking details or payment link)
+    // Use local network IP address for QR code URL
+    const localIP = '192.168.0.173';
+    const paymentUrl = `http://${localIP}:3001/payment?paymentId=${newPaymentId}`;
+    setPaymentData(paymentUrl);
+    setPaymentStatus('pending');
+    setShowPaymentPopup(true);
+  };
+
+  // Poll payment status every 3 seconds
+  useEffect(() => {
+    let interval;
+    if (showPaymentPopup && paymentId) {
+      interval = setInterval(() => {
+        axios.get(`/api/payment_status/${paymentId}`).then(res => {
+          if (res.data.success) {
+            setPaymentStatus(res.data.status);
+            if (res.data.status === 'confirmed') {
+              clearInterval(interval);
+              handlePaymentConfirmed();
+            }
+          }
+        }).catch(() => {
+          // ignore errors during polling
+        });
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [showPaymentPopup, paymentId]);
+
+  // Called when payment is confirmed
+  const handlePaymentConfirmed = () => {
+    setShowPaymentPopup(false);
     const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
     if (!userId || !username) {
       alert('User not logged in. Please login.');
       return;
     }
-
     selectedSeats.forEach(seatId => {
       axios.post('/api/book', {
         user_id: userId,
@@ -135,6 +176,13 @@ const Booking = () => {
             if (res.data.success) setSeats(res.data.seats);
           });
           alert('Booking successful');
+          // Clear booking form
+          setSourceCity('');
+          setDestinationCity('');
+          setSelectedTrain('');
+          setSelectedTimeSlot('');
+          setSelectedSeats([]);
+          setBookingDate('');
         } else {
           alert(res.data.message || 'Booking failed');
         }
@@ -142,6 +190,10 @@ const Booking = () => {
         alert('Network error. Booking failed.');
       });
     });
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentPopup(false);
   };
 
   const fetchUserBookings = () => {
@@ -270,7 +322,29 @@ const Booking = () => {
           })}
         </div>
 
-        <button onClick={handleBooking} style={styles.bookBtn}>Confirm Booking</button>
+        <button onClick={handleConfirmClick} style={styles.bookBtn}>Confirm Booking</button>
+
+        {showPaymentPopup && (
+          <div style={styles.paymentPopupOverlay}>
+            <div style={styles.paymentPopup}>
+        <h2>Payment</h2>
+        <p>Please scan the QR code below to complete your payment.</p>
+        {paymentData && (
+          <QRCodeSVG
+            value={paymentData}
+            size={200}
+            level="H"
+            includeMargin={true}
+          />
+        )}
+        <div style={styles.paymentButtons}>
+          {paymentStatus === 'pending' && <p>Waiting for payment confirmation...</p>}
+          {paymentStatus === 'confirmed' && <p>Payment confirmed! Processing booking...</p>}
+          <button onClick={handlePaymentCancel} style={styles.cancelBtn}>Cancel</button>
+        </div>
+            </div>
+          </div>
+        )}
 
         <h3 style={styles.sectionTitle}>📋 Your Bookings</h3>
         <div style={styles.tableContainer}>
@@ -587,6 +661,49 @@ const styles = {
     '&:hover': {
       backgroundColor: '#475569',
     },
+  },
+  paymentPopupOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1100,
+  },
+  paymentPopup: {
+    backgroundColor: 'white',
+    padding: '2rem',
+    borderRadius: '1rem',
+    width: '320px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+    textAlign: 'center',
+  },
+  paymentButtons: {
+    marginTop: '1.5rem',
+    display: 'flex',
+    justifyContent: 'space-around',
+  },
+  confirmBtn: {
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
+    cursor: 'pointer',
+    fontWeight: '600',
+  },
+  cancelBtn: {
+    backgroundColor: '#ef4444',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
+    cursor: 'pointer',
+    fontWeight: '600',
   },
 };
 
